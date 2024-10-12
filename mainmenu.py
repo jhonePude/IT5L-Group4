@@ -14,6 +14,7 @@ import base64
 import PyQt5
 import tkinter.font as tkFont
 import customtkinter
+import re
 
 
 try:
@@ -32,6 +33,8 @@ try:
         
         icon = PhotoImage(file="logistics.png")  # Replace with your icon file path
         frame.iconphoto(False, icon)
+        
+        
       
 ###################################################################################################
         
@@ -39,9 +42,7 @@ try:
         tree = myclass.create_treeview(frame,style)
     
         cursor = connection.cursor()
-        # cursor.execute("SELECT * FROM stocks")  
-        # rows = cursor.fetchall()  
-        
+    
         with open('username.txt', 'r') as f:
             current_username = f.read().strip()
         
@@ -82,23 +83,32 @@ try:
     
 
         ############################################################################################
+        
         def row_on_click(event):
 
             selected_row = tree.selection()
-            
-            # myclass.selected_row_on_click(textfield1, textfield2, textfield3, selected_row, tree, connection)
             
             if selected_row:
                 item = tree.item(selected_row)
                 values = item['values']
                 prduct_id = item['values'][0]
                 
+                # unabling to edit prodcut id in the same time making normal to readonly without user interaction
+                textfield1.config(state="normal")  # Temporarily enable the Entry widget
+                textfield1.delete(0, tk.END)  # Clear the existing content
+                textfield1.insert(0, prduct_id)  # Insert the new text
+                textfield1.config(state="readonly",readonlybackground="#fafafa")
                 
+                current_theme = sv_ttk.get_theme()
+                if current_theme == "light":
+                    textfield1.config(state="readonly",readonlybackground="#fafafa")
+                elif current_theme == "dark":
+                     textfield1.config(state="readonly",readonlybackground="#1c1c1c")
+                     
                 with open('stocksimages.txt', 'r') as imagesfile:
-                
         
                     for line in imagesfile:
-                        saved_image_path = line.strip().split(',')  # Assuming each line is formatted like "prdct_id,filepath"
+                        saved_image_path = line.strip().split(',')  
                         if saved_image_path[0] == str(prduct_id):  # Compare product ID
                             image_file_path = saved_image_path[1]  # Get the corresponding image file path
                             try:
@@ -112,10 +122,12 @@ try:
                                  label5.image = photo  # Keep a reference to avoid garbage collection
                             except Exception as e:
                                 print(f"Error loading image: {e}")
-                
-                        
+       
                 myclass.row_clicked_auto_delete_texfields(values,textfield1,textfield2,textfield3,textfield5,textfield7)
-                
+        
+        
+            
+
         ##############################################################################################
         def delete_on_click():
             selected_row = tree.selection()
@@ -149,7 +161,16 @@ try:
             textfield4.delete(0, tk.END)
             myclass.searchbox(product_id,tree,connection,label5,textfield1,textfield2,textfield3,textfield5,textfield7,combo)
             myclass.auto_delete_texfields(textfield1,textfield2,textfield3,textfield5,textfield7)
-                        
+        
+        def clearfields():
+            myclass.auto_delete_texfields(textfield1,textfield2,textfield3,textfield5,textfield7)
+            textfield1.config(state="normal")
+            combo.set("-Empty-")
+            
+            if button_search.get() == "ID Search":  
+                button_search.delete(0, tk.END)  
+            button_search.insert(0, "ID Search") 
+            button_search.config(fg_color=("white","#05d7ff"))
             
     v_scrollbar = ttk.Scrollbar(tree, orient="vertical", command=tree.yview)
     v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -159,6 +180,7 @@ try:
     tree.pack(fill=tk.BOTH, expand=True)
     
     tree.bind("<ButtonRelease-1>", row_on_click)
+
 
 
 ###########################################################################################################
@@ -172,8 +194,36 @@ try:
     except FileNotFoundError:
             print("No username found.")
 ##################################################################################################################
-
+#get user or admin
+    cursor = connection.cursor()
+    cursor.execute("SELECT userPosition FROM account WHERE userName = %s", (current_username,))
+    userPos = cursor.fetchone()
+  
+    if userPos:
+      #admin or user to show the button
+      userposition = str(userPos[0])
     
+    if userposition == "admin":
+        print("admin")
+        
+        #show updated stocks and deleted stocks   
+        def archived():
+            myclass.buttonarchived(connection)
+        button_archived = customtkinter.CTkButton(frame, cursor="hand2", text="Archived",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"), command =archived, border_width=2, height= 30,width=70,corner_radius=10)
+        button_archived.pack()
+        button_archived.place(x= 1188,y=405)
+
+        def updatedstocks():
+            myclass.button_updated_stocks(connection)
+        button_updated_stocks = customtkinter.CTkButton(frame, cursor="hand2", text="Updated Items",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"), command = updatedstocks, border_width=2, height= 30,width=70,corner_radius=10)
+        button_updated_stocks.pack()
+        button_updated_stocks.place(x= 1092,y=405)
+           
+    elif userposition == "user":
+        print("user")
+      
+
+###################################################################################################################    
     button_delete = tk.Button(frame,background="#05d7ff", foreground= "#020f12", activebackground= "#65e7ff", activeforeground="BLACK", highlightthickness=2, highlightbackground="#05d7ff", cursor="hand2", border="1", text="DELETE", font = ("Bahnschrift",11,"italic"), command = delete_on_click, highlightcolor="white")
     button_delete.pack(padx=10, pady=50)
     button_delete.place(x= 50,y=620)
@@ -183,6 +233,7 @@ try:
     button_update.pack(padx=10, pady=50)
     button_update.place(x= 50,y=550);
     button_update.config(height= 2, width=25)
+   
                                             #020f12                 #05d7ff
     button_add = tk.Button(frame,background="#05d7ff", foreground= "#020f12", activebackground= "#65e7ff", activeforeground="BLACK", highlightthickness=2, highlightbackground="#05d7ff", cursor="hand2", border="1", text="ADD", font = ("Bahnschrift",11,"italic"), command = add_on_click, highlightcolor="white",width=25,)
     button_add.pack(padx=10, pady=50)
@@ -192,16 +243,22 @@ try:
 
     button_search = customtkinter.CTkButton(frame, cursor="hand2", text="Search",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"), command = search_on_click, border_width=2, height= 30,width=100,corner_radius=50)
     button_search.pack()
-    button_search.place(x= 186,y=435)
+    button_search.place(x= 186,y=436)
+    
+    button_clear = customtkinter.CTkButton(frame, cursor="hand2", text="CLEAR",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"), command = clearfields, border_width=2, height= 28,width=100,corner_radius=50)
+    button_clear.pack()
+    button_clear.place(x= 186,y=402)
     
     def loggout():
         myclass.mainlogout(frame)
     logout = customtkinter.CTkButton(frame, cursor="hand2", text="Log out",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"), command = loggout, border_width=2, height= 30,width=70,corner_radius=10)
     logout.pack()
-    logout.place(x= 1260,y=410)
+    logout.place(x= 1260,y=405)
+    
 
     textfield1= tk.Entry(frame, foreground= "SystemButtonFace",fg="BLACK",border=0, width=12, font=('Arial', 25,"bold italic"))
     textfield1.pack()
+    
     
     textfield2= tk.Entry(frame, foreground= "SystemButtonFace",fg="BLACK", border=0, width=12, font=('Arial', 25,"bold italic"))
     textfield2.pack()
@@ -225,8 +282,7 @@ try:
         
     combo = ttk.Combobox(frame,values=current_username, width=13, font=("Arial", 18, "italic bold"), state="readonly")
     combo.set("-Empty-")
- 
- 
+    
     switch_state = False
     def switcher():
         global switch_state
@@ -239,12 +295,23 @@ try:
             
             button_search.configure(cursor="hand2", text="Search",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"))
             logout.configure(cursor="hand2", text="Log out",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"))
+            button_clear.configure(cursor="hand2", text="Clear",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"))
+            button_archived.configure(cursor="hand2", text="Archive",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"))
+            button_updated_stocks.configure(cursor="hand2", text="Updated Stocks",text_color= "black",fg_color=("white","#05d7ff"), font = ("Bahnschrift",11,"bold"))
+            
+            button_updated_stocks.place(x= 1085,y=405)
+            button_archived.place(x= 1188,y=405)
+            
+            button_search.place(x= 186,y=436)
+            button_clear.place(x= 186,y=402)
 
+            textfield1.config(state="readonly",readonlybackground="#fafafa")
             textfield4.configure(height=38,width=130, text_color= "black",fg_color=("blue","white") ,placeholder_text="ID search" ,font=('Arial', 16,"bold"),corner_radius=50)
             
             style.configure("Treeview.Heading", font=("Franklin Gothic Heavy", 14,"italic"))
             style.configure("Treeview", rowheight=80)
             style.configure("Treeview", font=("Bahnschrift", 25,"bold"))
+           
             switch_state = False
         else:
             sv_ttk.set_theme("dark")
@@ -255,9 +322,15 @@ try:
             
             button_search.configure(text_color= "white",bg_color="#1c1c1c",fg_color=("white","#020f12"))
             logout.configure(text_color= "white",bg_color="#1c1c1c",fg_color=("white","#020f12"))
+            button_clear.configure(text_color= "white",bg_color="#1c1c1c",fg_color=("white","#020f12"),font = ("Bahnschrift",11,"bold"))
+            button_archived.configure(text_color= "white",bg_color="#1c1c1c",fg_color=("white","#020f12"),font = ("Bahnschrift",11,"bold"))
+            button_updated_stocks.configure(text_color= "white",bg_color="#1c1c1c",fg_color=("white","#020f12"),font = ("Bahnschrift",11,"bold"))
+            
+            button_updated_stocks.place(x= 1092,y=405)
+            button_archived.place(x= 1188,y=405)
 
             textfield4.configure(height=38,width=130, text_color= "white",bg_color="#1c1c1c",fg_color=("white","#1C1C1C") ,placeholder_text="ID search" ,font=('Arial', 16,"bold"),corner_radius=50)
-            
+            textfield1.config(state="readonly",readonlybackground="#1c1c1c")
             style.configure("Treeview.Heading", font=("Franklin Gothic Heavy", 14,"italic"))
             style.configure("Treeview", rowheight=80) 
             style.configure("Treeview", font=("Bahnschrift", 25,"bold"))
@@ -363,9 +436,15 @@ try:
     label_var5.set("       \n         no image") 
     label5 = tk.Label(frame, textvariable=label_var5, borderwidth=4, relief="sunken", anchor=tk.W, font=("Arial", 15,"italic bold"), justify=tk.CENTER)
     label5.place(x= 1125, y=525, height= 130, width=220);
-
     
-    tree.pack(ipady = 20)                           
+    text_var = tk.StringVar()
+    text_var.set("Example: \n08/22/2000:") 
+    label9 = tk.Label(frame, textvariable=text_var, anchor=tk.W, font=("Franklin Gothic Heavy", 12,), justify=tk.CENTER)
+    label9.pack() 
+    label9.place(x= 755,y=575);
+
+        
+    tree.pack(fill='both', expand=True)                           
     tree.place(x=10, y=30, width=1345, height=365)
     frame.mainloop()   
     

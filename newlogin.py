@@ -9,7 +9,6 @@ import subprocess
 from mysql.connector import Error
 import mysql.connector 
 from thisclass import myclass
-
 from PIL import Image, ImageTk
 import io
 import sv_ttk 
@@ -209,25 +208,78 @@ try:
                 user_email = textfield3_signup_email.get()
                 hushedpasword = hash_password(user_pass)
                 
-            
-                if user_input == "" or user_pass == "" or user_email == "":
-                    messagebox.showerror("Error", "Please fill in all fields.")
+                cursor = connection.cursor()
+                cursor.execute("SELECT userName FROM account WHERE userName = %s", (user_input,))
+                username_db = cursor.fetchone()
+                    
+                
+                
+              
+                if username_db and username_db[0] == user_input:
+                    global labelerror1
+                    labelerror1 = tk.Label(createaccountpage, text ="*Already Existed!     ", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                    labelerror1.pack() 
+                    labelerror1.place(x=110, y=94);
+                    
+                       
+                elif user_input == "" or user_pass == "" or user_email == "":
+                    if user_input == "":
+                        labelerror1 = tk.Label(createaccountpage, text ="* This Field is Empty!", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror1.pack() 
+                        labelerror1.place(x=110, y=94);
+                    elif user_input != "":
+                        labelerror1 = tk.Label(createaccountpage, text ="                                         ", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror1.pack() 
+                        labelerror1.place(x=110, y=94);
+                        
+                        
+                    if user_pass == "":
+                        global labelerror2
+                        labelerror2 = tk.Label(createaccountpage, text ="* This Field is Empty!", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror2.pack() 
+                        labelerror2.place(x=110, y=185);
+                    elif user_pass != "":
+                        labelerror2 = tk.Label(createaccountpage, text ="                                          ", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror2.pack() 
+                        labelerror2.place(x=110, y=185);
+                        
+                    if user_email == "":
+                        global labelerror3
+                        labelerror3 = tk.Label(createaccountpage, text ="* This Field is Empty!", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror3.pack() 
+                        labelerror3.place(x=75, y=271);
+                    elif user_email != "":
+                        labelerror3 = tk.Label(createaccountpage, text ="                                           ", bg = "light blue", fg = "red", anchor=tk.W, font=("Arial",8), justify=tk.CENTER)
+                        labelerror3.pack() 
+                        labelerror3.place(x=75, y=271);
                     
                 elif not myclass.validate_email(user_email):
                     messagebox.showerror("Error", "Please fill email with @yahoo.com or @gmail.com")
+                    labelerror1.destroy()
 
-                else:
+                else:        
+ 
+                    userposition = myclass.on_radio_button_selected(radio_var)
+                    
+                    with open('username.txt', 'w') as f:
+                        f.write(user_input)
+                        
+                        
                     cursor = connection.cursor()
-                    cursor.execute("INSERT INTO `account`(`userID`, `userName`,userEmail, `userPass`) VALUES (%s, %s, %s, %s)",('', user_input, user_email ,hushedpasword))
+                    cursor.execute("INSERT INTO `account`(`userID`, `userName`,userEmail, `userPass`, `userPosition`) VALUES (%s, %s, %s, %s, %s)",('', user_input, user_email ,hushedpasword,userposition))
                     connection.commit()
                     messagebox.showinfo("Account Creation","Account Created")
+
+                    main_frame.destroy()  
+                    
+                    os.system('python mainmenu.py')
                     
                     textfield1_signup_username.delete(0, tk.END)
                     textfield2_signup_password.delete(0, tk.END)
                     textfield3_signup_email.delete(0, tk.END)
                     
                     create_signin_homepage()
-            
+           
             text_var0 = tk.StringVar()
             text_var0.set("Create Account") 
             lbl_username0 = tk.Label(createaccountpage, bg= "lightblue", textvariable=text_var0, anchor=tk.W, font=("Arial Black", 17,"bold"), justify=tk.CENTER)
@@ -267,7 +319,16 @@ try:
             register_button = customtkinter.CTkButton(createaccountpage, cursor="hand2", text="Register",text_color= "black",fg_color=("white","#05d7ff"), font = ("Arial",18), command = on_click_reg, width=65,corner_radius=50)
             register_button.configure(width=290, height=40)
             register_button.pack()
-            register_button.place(x = 25, y = 365)
+            register_button.place(x = 25, y = 380)
+           
+            radio_var = customtkinter.StringVar(value="Admin")
+            radio1 = customtkinter.CTkRadioButton(createaccountpage, font=("Arial", 15, "bold"), text_color="black", text="Admin", variable=radio_var, value="Admin", command=lambda: myclass.on_radio_button_selected(radio_var))
+            radio1.pack()
+            radio1.place(x = 70, y = 350)
+            
+            radio2 = customtkinter.CTkRadioButton(createaccountpage, font=("Arial", 15, "bold"), text_color="black", text="User", variable=radio_var, value="User",command=lambda: myclass.on_radio_button_selected(radio_var))
+            radio2.pack()
+            radio2.place(x = 200, y = 350)
 
 ############################################################################################################################################################
 #ALL CODES ABOVE  IS FOR THE CREATE ACCOUNT NA FRAME PAG GE PINDOT ANG CREATE ACCOUNT NA BUTTON
